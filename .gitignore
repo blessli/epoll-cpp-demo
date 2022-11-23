@@ -1,3 +1,4 @@
+epoll_benchmark
 eventfd
 mutil_eventfd
-simple_epoll
+simple_epoll_server

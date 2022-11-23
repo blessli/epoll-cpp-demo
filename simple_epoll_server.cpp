@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #define MAXLEN 1024
-#define SERV_PORT 8000
+#define SERV_PORT 18000
 #define MAX_OPEN_FD 1024
 
 int main(int argc, char *argv[])
@@ -17,7 +17,6 @@ int main(int argc, char *argv[])
     struct epoll_event tep, ep[MAX_OPEN_FD];
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
-
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port = htons(SERV_PORT);
