@@ -17,7 +17,7 @@ int main1() {
     close(efd);
 }
 
-int main() {
+int main4() {
     int efd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC | EFD_SEMAPHORE);
     eventfd_write(efd, 2);
     eventfd_t count;

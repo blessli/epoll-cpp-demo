@@ -10,11 +10,12 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <string>
+#include <ctime>
 #define MAX_OPEN_FD 1000
 #define CURRENCY 2
 #define SERV_PORT 18000
 #define MAXLEN 1024
-static int efd;
+static int efd, total_req, total_read;
 static struct sockaddr_in servaddr;
 struct epoll_event tep;
 int setnonblock(int fd)
@@ -26,20 +27,23 @@ int setnonblock(int fd)
 }
 void new_conn()
 {
+    if (--total_req < 0)
+        return;
     int socketfd = socket(AF_INET, SOCK_STREAM, 0);
     assert(socketfd != -1);
     setnonblock(socketfd);
-    tep.events = EPOLLOUT|EPOLLIN;
+    tep.events = EPOLLOUT | EPOLLIN;
     tep.data.fd = socketfd;
     int ret = epoll_ctl(efd, EPOLL_CTL_ADD, socketfd, &tep);
     assert(ret != -1);
     ret = connect(socketfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
-    fprintf(stderr,"Connect Error:%s\a\n",strerror(errno));
+    // fprintf(stderr,"Connect Error:%s\a\n",strerror(errno));
     // assert(ret != -1);
 }
 
 int main(int argc, char *argv[])
 {
+    total_req = total_read = 100000;
     char buf[MAXLEN];
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -52,6 +56,7 @@ int main(int argc, char *argv[])
     {
         new_conn();
     }
+    clock_t start = clock();
     while (1)
     {
         size_t nready = epoll_wait(efd, ep, MAX_OPEN_FD, -1);
@@ -69,16 +74,34 @@ int main(int argc, char *argv[])
                 std::string uuid_string = boost::uuids::to_string(a_uuid);
                 strcpy(buf, uuid_string.c_str());
                 printf("write %s\n", buf);
-                write(connfd, buf, sizeof(uuid_string));
+                write(connfd, buf, sizeof(buf));// 写缓冲区满，会阻塞
             }
             else if (ep[i].events & EPOLLIN)
             {
                 printf("can read\n");
                 int bytes = read(connfd, buf, MAXLEN);
+                buf[bytes] = 0;
                 printf("return %s\n", buf);
                 close(connfd);
                 new_conn();
+                fprintf(stderr, "total_read %d\n", total_read);
+                if (--total_read <= 0)
+                {
+                    break;
+                }
             }
         }
+        if (--total_read <= 0)
+        {
+            break;
+        }
     }
+    clock_t end = clock();
+    /**
+     * 10000  4.68s
+     * 100000 46.68s 单线程
+     * 100000 51.14s 5线程池
+    */
+    printf("压测花费了 %lf 秒\n", (double)(end - start) / CLOCKS_PER_SEC);
+    return 0;
 }

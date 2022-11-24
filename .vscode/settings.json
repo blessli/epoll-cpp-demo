@@ -4,6 +4,8 @@
         "istream": "cpp",
         "ostream": "cpp",
         "utility": "cpp",
-        "tuple": "cpp"
+        "tuple": "cpp",
+        "complex": "cpp",
+        "type_traits": "cpp"
     }
 }
