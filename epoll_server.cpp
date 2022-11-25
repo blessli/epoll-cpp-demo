@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <iostream>
+#include <stdlib.h>
 #include "threadpool.h"
 #define MAXLEN 1024
 #define SERV_PORT 18000
@@ -20,42 +21,35 @@ struct fds
 
 void *worker(void *args)
 {
-    int socketfd = *(int*)args;
+    int socketfd = *(int *)args;
     int epollfd = efd;
     printf("start new thread to receive data on fd: %d\n", socketfd);
     char buf[MAXLEN];
-    while (1)
+    int bytes = read(socketfd, buf, MAXLEN);
+    if (bytes == 0)
     {
-        int bytes = read(socketfd, buf, MAXLEN);
-        // 客户端关闭连接
-        if (bytes == 0)
+        int ret = epoll_ctl(efd, EPOLL_CTL_DEL, socketfd, NULL);
+        assert(ret != -1);
+        close(socketfd);
+        printf("客户端关闭连接，client closed\n");
+    }
+    else
+    {
+        for (int j = 0; j < bytes; ++j)
         {
-            int ret = epoll_ctl(efd, EPOLL_CTL_DEL, socketfd, NULL);
-            assert(ret != -1);
-            close(socketfd);
-            printf("客户端关闭连接，client closed\n");
-            break;
+            buf[j] = toupper(buf[j]);
         }
-        else
-        {
-            for (int j = 0; j < bytes; ++j)
-            {
-                buf[j] = toupper(buf[j]);
-            }
-            buf[bytes] = '\0';
-            sleep(5);//采用睡眠是为了在5s内若有新数据到来则该线程继续处理，否则线程退出
-            // 向客户端发送数据
-            write(socketfd, buf, bytes);
-            printf("转成大写字母，并向客户端发送数据: %s\n", buf);
-            
-        }
+        buf[bytes] = '\0';
+        // 向客户端发送数据
+        write(socketfd, buf, bytes);
+        printf("转成大写字母，并向客户端发送数据: %s\n", buf);
     }
 }
 
 int main(int argc, char *argv[])
 {
     threadpool_t pool;
-    //初始化线程池，最多3个线程
+    // 初始化线程池，最多3个线程
     threadpool_init(&pool, THREADPOOL_MAX_NUM);
     int listenfd, connfd, ret;
     char buf[MAXLEN];
@@ -98,7 +92,7 @@ int main(int argc, char *argv[])
             }
             else if (ep[i].events & EPOLLIN) // 客户端有数据发送的事件发生
             {
-                int *p =(int *)malloc(sizeof(int));
+                int *p = (int *)malloc(sizeof(int));
                 *p = socketfd;
                 threadpool_add_task(&pool, worker, p);
             }

@@ -15,10 +15,11 @@
 #define CURRENCY 2
 #define SERV_PORT 18000
 #define MAXLEN 1024
+#define TOTAL_REQ 100000
 static int efd, total_req, total_read;
 static struct sockaddr_in servaddr;
 struct epoll_event tep;
-int setnonblock(int fd)
+void setnonblock(int fd)
 {
     int flags;
     flags = fcntl(fd, F_GETFL);
@@ -43,7 +44,7 @@ void new_conn()
 
 int main(int argc, char *argv[])
 {
-    total_req = total_read = 100000;
+    total_req = total_read = TOTAL_REQ;
     char buf[MAXLEN];
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -59,7 +60,7 @@ int main(int argc, char *argv[])
     clock_t start = clock();
     while (1)
     {
-        size_t nready = epoll_wait(efd, ep, MAX_OPEN_FD, -1);
+        int nready = epoll_wait(efd, ep, MAX_OPEN_FD, -1);
         assert(nready != -1);
         for (int i = 0; i < nready; i++)
         {
@@ -100,7 +101,9 @@ int main(int argc, char *argv[])
     /**
      * 10000  4.68s
      * 100000 46.68s 单线程
-     * 100000 51.14s 5线程池
+     * 100000 49.02s reactor模式1:2
+     * 100000 46.66s reactor模式1:4 cpu60%
+     * 100000 46.98s reactor模式1:6
     */
     printf("压测花费了 %lf 秒\n", (double)(end - start) / CLOCKS_PER_SEC);
     return 0;

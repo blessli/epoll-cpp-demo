@@ -1,13 +1,13 @@
 set(SRCS
     epoll_server.cpp
     threadpool.cpp
+    condition.cpp
 )
-include_directories(${PROJECT_SOURCE_DIR}/base)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=gnu++0x")
+include_directories(include)
+add_executable(EpollDemo ${SRCS})
+target_link_libraries(EpollDemo pthread)
 
 
-add_executable(WebServer ${SRCS})
-target_link_libraries(WebServer libserver_base)
-
-
-add_subdirectory(base)
-add_subdirectory(tests)
+add_subdirectory(bench)
+add_subdirectory(reactor)
