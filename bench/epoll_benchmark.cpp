@@ -11,11 +11,13 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <string>
 #include <ctime>
+#include <thread>
+#include <iostream>
 #define MAX_OPEN_FD 1000
 #define CURRENCY 2
 #define SERV_PORT 18000
 #define MAXLEN 1024
-#define TOTAL_REQ 100000
+#define TOTAL_REQ 1e6
 static int efd, total_req, total_read;
 static struct sockaddr_in servaddr;
 struct epoll_event tep;
@@ -58,9 +60,12 @@ int main(int argc, char *argv[])
         new_conn();
     }
     clock_t start = clock();
+    time_t start_time, end_time;
+    time(&start_time);
     while (1)
     {
         int nready = epoll_wait(efd, ep, MAX_OPEN_FD, -1);
+        // std::this_thread::sleep_for(std::chrono::milliseconds(100));
         assert(nready != -1);
         for (int i = 0; i < nready; i++)
         {
@@ -74,18 +79,17 @@ int main(int argc, char *argv[])
                 boost::uuids::uuid a_uuid = boost::uuids::random_generator()();
                 std::string uuid_string = boost::uuids::to_string(a_uuid);
                 strcpy(buf, uuid_string.c_str());
-                printf("write %s\n", buf);
+                // printf("write %s\n", buf);
                 write(connfd, buf, sizeof(buf));// 写缓冲区满，会阻塞
             }
             else if (ep[i].events & EPOLLIN)
             {
-                printf("can read\n");
                 int bytes = read(connfd, buf, MAXLEN);
                 buf[bytes] = 0;
-                printf("return %s\n", buf);
+                // printf("return %s\n", buf);
                 close(connfd);
                 new_conn();
-                fprintf(stderr, "total_read %d\n", total_read);
+                // fprintf(stderr, "total_read %d\n", total_read);
                 if (--total_read <= 0)
                 {
                     break;
@@ -105,6 +109,8 @@ int main(int argc, char *argv[])
      * 100000 46.66s reactor模式1:4 cpu60%
      * 100000 46.98s reactor模式1:6
     */
-    printf("压测花费了 %lf 秒\n", (double)(end - start) / CLOCKS_PER_SEC);
+   	time(&end_time);
+	double cost_time = difftime(end_time, start_time);
+	std::cout << "压测花费了 " << cost_time << " seconds" << std::endl;
     return 0;
 }

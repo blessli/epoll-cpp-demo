@@ -11,7 +11,9 @@
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}",
                 "-l",
-                "pthread"
+                "pthread",
+                "-I",
+                "/usr/local/boost/boost_1_73_0"
             ],
             "options": {
                 "cwd": "${fileDirname}"
